@@ -1,8 +1,3 @@
-Eduardo Florippes
-	
-3:43 PM (0 minutes ago)
-	
-to me
 # Mock Server (Rust)
 
 ## Overview
