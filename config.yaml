@@ -1,7 +1,10 @@
 /api/user:
-  method: GET
+  method:
+   - GET
   file: user_response.json
 
 /api/order:
-  method: POST
+  method:
+   - POST
+   - DELETE
   file: order_data.json
