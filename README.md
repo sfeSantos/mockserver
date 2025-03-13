@@ -1,0 +1,34 @@
+Eduardo Florippes
+	
+3:43 PM (0 minutes ago)
+	
+to me
+# Mock Server (Rust)
+
+## Overview
+This project is a **dynamic mock server** written in Rust. It reads a YAML configuration file to define API endpoints, supported HTTP methods, and response files. The main goal is to provide a simple, file-based mock API server that supports:
+
+- **GET requests**: Returns JSON responses from predefined files.
+- **POST & PUT requests**: Saves incoming request bodies as JSON files.
+- **DELETE requests**: Responds with HTTP `204 No Content`.
+- **Local file storage only**: All response files are stored in the `responses/` directory.
+
+## Why This Project?
+Many developers need quick and flexible mock servers to simulate backend APIs during frontend or integration testing. This project provides a **lightweight and fast** alternative to heavy solutions like JSON Server or WireMock.
+
+## Features
+- 🚀 **Fast**: Uses `warp` and `tokio` for high-performance asynchronous processing.
+- 📜 **Easy Configuration**: Define endpoints via a simple `config.yaml` file.
+- 💾 **File-Based Storage**: Store and retrieve JSON responses without a database.
+- 🔄 **Dynamic API Handling**: Automatically updates responses with `POST`/`PUT`.
+- 🛠 **Unit-Tested**: Includes tests for configuration loading and request handling.
+
+## Installation
+### Prerequisites
+- Install [Rust](https://www.rust-lang.org/tools/install)
+
+### Clone and Build
+```sh
+git clone https://github.com/your-repo/mockserver.git
+cd mockserver
+cargo build --release
