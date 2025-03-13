@@ -27,3 +27,49 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 git clone https://github.com/your-repo/mockserver.git
 cd mockserver
 cargo build --release
+```
+
+## Configuration
+```yaml
+/api/user:
+  method: GET
+  file: user_response.json
+
+/api/order:
+  method: POST
+  file: order_data.json
+```
+This means:
+- `GET /api/user` &rarr; Returns `response/user_reponse.json`
+- `POST /api/order` &rarr; Returns `response/order_data.json`
+
+## Running the server
+```sh
+cargo run
+```
+Server starts on http://localhost:8080
+
+## Example Usage
+### Retrieve a mock Response
+
+```sh
+curl http://localhost:8080/api/user
+```
+
+### Save/Update Data
+```sh
+curl -X POST http://localhost:8080/api/order -d '{"item": "Laptop"}' -H "Content-Type: application/json"
+```
+
+### Delete Data
+```sh
+curl -X DELETE http://localhost:8080/api/order
+```
+
+### Running Testss
+```sh
+cargo test
+```
+
+## Contributions
+Contributions are welcome! Feel free to submit issues or pull requests.

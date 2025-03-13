@@ -1,3 +1,7 @@
 /api/user:
   method: GET
   file: user_response.json
+
+/api/order:
+  method: POST
+  file: order_data.json
