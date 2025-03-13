@@ -1,0 +1,3 @@
+/api/user:
+  method: GET
+  file: user_response.json
