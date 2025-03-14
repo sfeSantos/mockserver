@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use tokio::fs as async_fs;
 use std::fs;
-use anyhow::__private::not;
 use warp::Filter;
-use warp::http::{status, Response};
+use warp::http::Response;
 use crate::config::Endpoint;
 
 pub fn routes(endpoints: HashMap<String, Endpoint>) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
@@ -17,7 +16,7 @@ pub fn routes(endpoints: HashMap<String, Endpoint>) -> impl Filter<Extract = (im
         .and_then(handle_request)
 }
 
-async fn handle_request(
+pub async fn handle_request(
     path: warp::path::FullPath,
     method: warp::http::Method,
     body: bytes::Bytes,
