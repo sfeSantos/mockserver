@@ -37,11 +37,20 @@ cargo build --release
 /api/user:
   method: GET
   file: user_response.json
+  authentication:
+    basic:
+      user: 'admin'
+      password: 'secret'
 
 /api/order:
   method: POST
   file: order_data.json
-  status_code: 202 #custom Http Status code
+  status_code: 202 #custom Http status code
+  authentication:
+    bearer:
+      token: 'valid_token'
+      claims:
+        role: 'admin'
 ```
 This means:
 - `GET /api/user` &rarr; Returns `response/user_reponse.json`
