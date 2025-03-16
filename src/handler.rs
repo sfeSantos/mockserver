@@ -62,3 +62,123 @@ pub async fn handle_request(
 
     Ok(Response::builder().status(404).body("Not Found\n".into()).unwrap())
 }
+
+#[cfg(test)]
+mod test {
+    use warp::test::request;
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_existing_file() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/test".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "test_response.json".to_string(),
+            },
+        );
+
+        fs::write("responses/test_response.json", "{\"message\": \"ok\"}").unwrap();
+
+        let api = routes(endpoints);
+        let res = request()
+            .method("GET")
+            .path("/test")
+            .reply(&api)
+            .await;
+
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.body(), "{\"message\": \"ok\"}");
+    }
+
+    #[tokio::test]
+    async fn test_get_non_existent_file() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/missing".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "missing.json".to_string(),
+            },
+        );
+
+        let api = routes(endpoints);
+        let res = request()
+            .method("GET")
+            .path("/missing")
+            .reply(&api)
+            .await;
+
+        assert_eq!(res.status(), 404);
+    }
+
+    #[tokio::test]
+    async fn test_post_create_file() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/create".to_string(),
+            Endpoint {
+                method: vec!["POST".to_string()],
+                file: "create.json".to_string(),
+            },
+        );
+
+        let api = routes(endpoints);
+        let res = request()
+            .method("POST")
+            .path("/create")
+            .body("{\"data\": \"test\"}")
+            .reply(&api)
+            .await;
+        let contents = fs::read_to_string("responses/create.json").unwrap();
+
+        assert_eq!(res.status(), 201);
+        assert_eq!(contents, "{\"data\": \"test\"}");
+    }
+
+    #[tokio::test]
+    async fn test_delete_existing_file() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/delete".to_string(),
+            Endpoint {
+                method: vec!["DELETE".to_string()],
+                file: "delete.json".to_string(),
+            },
+        );
+
+        fs::write("responses/delete.json", "to be deleted").unwrap();
+
+        let api = routes(endpoints);
+        let res = request()
+            .method("DELETE")
+            .path("/delete")
+            .reply(&api)
+            .await;
+
+        assert_eq!(res.status(), 204);
+        assert!(fs::metadata("responses/delete.json").is_err());
+    }
+
+    #[tokio::test]
+    async fn test_method_not_allowed() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/forbidden".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "forbidden.json".to_string(),
+            },
+        );
+
+        let api = routes(endpoints);
+        let res = request()
+            .method("POST")
+            .path("/forbidden")
+            .reply(&api)
+            .await;
+
+        assert_eq!(res.status(), 405);
+    }
+}
