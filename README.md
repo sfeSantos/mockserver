@@ -38,6 +38,7 @@ cargo build --release
 /api/order:
   method: POST
   file: order_data.json
+  status_code: 202 #custom Http Status code
 ```
 This means:
 - `GET /api/user` &rarr; Returns `response/user_reponse.json`
