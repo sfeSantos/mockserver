@@ -2,6 +2,10 @@
   method:
    - GET
   file: user_response.json
+  authentication:
+    basic:
+      user: USER_NAME
+      password: PASSWORD
 
 /api/order:
   method:
@@ -9,3 +13,10 @@
    - DELETE
   file: order_data.json
   status_code: 202 #custom Http Status code
+  authentication:
+    bearer:
+      token: TOKEN_STR
+      claims:
+        sub: SUB
+        name: NAME
+        iat: 1516238972
