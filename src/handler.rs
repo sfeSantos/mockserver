@@ -3,14 +3,18 @@ use std::collections::HashMap;
 use std::fs;
 use tokio::fs as async_fs;
 use warp::Filter;
+use warp::http::header::AUTHORIZATION;
 use warp::http::Response;
+use warp::hyper::Body;
+use warp::reject::custom;
+use crate::authentication::{validate_auth, Unauthorized};
 
 pub fn routes(
     endpoints: HashMap<String, Endpoint>,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let endpoints = warp::any().map(move || endpoints.clone());
 
-    //cors middleware: accept everything
+    //TODO allow cors be passed via configuration file
     let cors = warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
@@ -19,19 +23,28 @@ pub fn routes(
 
     warp::path::full()
         .and(warp::method())
+        .and(warp::header::optional::<String>(AUTHORIZATION.as_str()))
         .and(warp::body::bytes())
         .and(endpoints)
         .and_then(handle_request)
+        .recover(handle_rejection)
         .with(cors)
 }
 
 pub async fn handle_request(
     path: warp::path::FullPath,
     method: warp::http::Method,
+    auth_header: Option<String>,
     body: bytes::Bytes,
     endpoints: HashMap<String, Endpoint>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     if let Some(endpoint) = endpoints.get(path.as_str()) {
+        if let Some(auth) = &endpoint.authentication {
+            if !validate_auth(auth, auth_header) {
+                return Err(custom(Unauthorized));
+            }
+        }
+        
         let method_str = method.as_str();
         let status_code = default_status_code(endpoint, method_str);
 
@@ -106,6 +119,18 @@ fn default_status_code(endpoint: &Endpoint, method_str: &str) -> u16 {
     })
 }
 
+/// Custom rejection handler for returning proper error responses
+async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
+    if err.find::<Unauthorized>().is_some() {
+        let response: Response<Body> = Response::builder()
+            .status(401)
+            .body(Body::from("Unauthorized\n"))
+            .unwrap();
+        return Ok(response);
+    }
+    Err(err)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -120,6 +145,7 @@ mod test {
                 method: vec!["GET".to_string()],
                 file: "test_response.json".to_string(),
                 status_code: None,
+                authentication: None,
             },
         );
 
@@ -141,6 +167,7 @@ mod test {
                 method: vec!["GET".to_string()],
                 file: "missing.json".to_string(),
                 status_code: None,
+                authentication: None,
             },
         );
 
@@ -159,6 +186,7 @@ mod test {
                 method: vec!["POST".to_string()],
                 file: "create.json".to_string(),
                 status_code: Some(201),
+                authentication: None,
             },
         );
 
@@ -184,6 +212,7 @@ mod test {
                 method: vec!["DELETE".to_string()],
                 file: "delete.json".to_string(),
                 status_code: Some(205),
+                authentication: None,
             },
         );
 
@@ -205,6 +234,7 @@ mod test {
                 method: vec!["GET".to_string()],
                 file: "forbidden.json".to_string(),
                 status_code: None,
+                authentication: None,
             },
         );
 
@@ -227,6 +257,7 @@ mod test {
                 method: vec!["GET".to_string()],
                 file: "test_response.json".to_string(),
                 status_code: Some(201),
+                authentication: None,
             },
         );
 
@@ -237,5 +268,174 @@ mod test {
 
         assert_eq!(res.status(), 201);
         assert_eq!(res.body(), "{\"message\": \"ok\"}");
+    }
+
+    #[tokio::test]
+    async fn test_unauthorized_access_basic() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/protected".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "protected.json".to_string(),
+                status_code: Some(200),
+                authentication: Some(serde_yaml::from_str("basic: { user: 'admin', password: 'secret' }").unwrap()),
+            },
+        );
+
+        let api = routes(endpoints);
+        let res = request().method("GET").path("/protected").reply(&api).await;
+        assert_eq!(res.status(), 401);
+    }
+
+    #[tokio::test]
+    async fn test_valid_basic_auth() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/protected".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "protected.json".to_string(),
+                status_code: Some(200),
+                authentication: Some(serde_yaml::from_str("
+                    basic:
+                        user: 'admin'
+                        password: 'secret'
+                ").unwrap()),
+            },
+        );
+
+        fs::write("responses/protected.json", "{\"message\": \"ok\"}").unwrap();
+        
+        let api = routes(endpoints);
+
+        let auth_header = "Basic YWRtaW46c2VjcmV0"; // base64 of "admin:secret"
+        let res = request()
+            .method("GET")
+            .path("/protected")
+            .header("Authorization", auth_header)
+            .reply(&api)
+            .await;
+        assert_eq!(res.status(), 200);
+    }
+
+    #[tokio::test]
+    async fn test_valid_bearer_token() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/protected".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "protected.json".to_string(),
+                status_code: Some(200),
+                authentication: Some(serde_yaml::from_str(r#"
+                    bearer:
+                        token: 'valid_token'
+                "#).unwrap()),
+            },
+        );
+
+        let api = routes(endpoints);
+
+        // Valid Bearer Token (should return status 200)
+        let auth_header = "Bearer valid_token";
+        let res = request()
+            .method("GET")
+            .path("/protected")
+            .header("Authorization", auth_header)
+            .reply(&api)
+            .await;
+        assert_eq!(res.status(), 200);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_bearer_token() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/protected".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "protected.json".to_string(),
+                status_code: Some(200),
+                authentication: Some(serde_yaml::from_str(r#"
+                    bearer:
+                        token: 'valid_token'
+                "#).unwrap()),
+            },
+        );
+
+        let api = routes(endpoints);
+
+        // Invalid Bearer Token (should return status 401)
+        let auth_header = "Bearer invalid_token";
+        let res = request()
+            .method("GET")
+            .path("/protected")
+            .header("Authorization", auth_header)
+            .reply(&api)
+            .await;
+        assert_eq!(res.status(), 401);
+    }
+
+    #[tokio::test]
+    async fn test_edge_case_missing_claims_in_bearer_token() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/protected".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "protected.json".to_string(),
+                status_code: Some(200),
+                authentication: Some(serde_yaml::from_str(r#"
+                    bearer:
+                        token: 'valid_token'
+                        claims:
+                            role: 'admin'
+                "#).unwrap()),
+            },
+        );
+
+        let api = routes(endpoints);
+
+        // Missing claim in the bearer token (should return 401)
+        let auth_header = "Bearer valid_token"; // token without role claim
+        let res = request()
+            .method("GET")
+            .path("/protected")
+            .header("Authorization", auth_header)
+            .reply(&api)
+            .await;
+        assert_eq!(res.status(), 401);
+    }
+
+    #[tokio::test]
+    async fn test_edge_case_invalid_claims_in_bearer_token() {
+        let mut endpoints = HashMap::new();
+        endpoints.insert(
+            "/protected".to_string(),
+            Endpoint {
+                method: vec!["GET".to_string()],
+                file: "protected.json".to_string(),
+                status_code: Some(200),
+                authentication: Some(serde_yaml::from_str(r#"
+                    bearer:
+                        token: 'valid_token'
+                        claims:
+                            role: 'admin'
+                "#).unwrap()),
+            },
+        );
+
+        let api = routes(endpoints);
+
+        // Invalid claim in the bearer token (should return 401)
+        let auth_header = "Bearer invalid_token_with_claim"; // token with incorrect claim
+        let res = request()
+            .method("GET")
+            .path("/protected")
+            .header("Authorization", auth_header)
+            .reply(&api)
+            .await;
+        assert_eq!(res.status(), 401);
     }
 }

@@ -17,6 +17,9 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 - 💾 **File-Based Storage**: Store and retrieve JSON responses without a database.
 - 🔄 **Dynamic API Handling**: Automatically updates responses with `POST`/`PUT`.
 - 🛠 **Unit-Tested**: Includes tests for configuration loading and request handling.
+- 🔐 **Authorization**: Supports mocking of **Basic Authentication** and **Bearer Token Authentication**:
+    - **Basic Auth**: Validates username and password based on the configuration.
+    - **Bearer Token**: Validates tokens and their claims, ensuring that the token matches expected values and claims (e.g., roles, permissions).
 
 ## Installation
 ### Prerequisites

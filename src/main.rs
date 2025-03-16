@@ -1,6 +1,9 @@
+extern crate core;
+
 mod config;
 mod handler;
 mod server;
+mod authentication;
 
 #[tokio::main]
 async fn main() {
