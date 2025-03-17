@@ -16,21 +16,29 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 - 📜 **Easy Configuration**: Define endpoints via a simple `config.yaml` file.
 - 💾 **File-Based Storage**: Store and retrieve JSON responses without a database.
 - 🔄 **Dynamic API Handling**: Automatically updates responses with `POST`/`PUT`.
+- 🌍 **CORS Support**: Configured to allow cross-origin requests, making it easier to integrate with frontend applications.
 - 🛠 **Unit-Tested**: Includes tests for configuration loading and request handling.
 - 🔐 **Authorization**: Supports mocking of **Basic Authentication** and **Bearer Token Authentication**:
     - **Basic Auth**: Validates username and password based on the configuration.
     - **Bearer Token**: Validates tokens and their claims, ensuring that the token matches expected values and claims (e.g., roles, permissions).
+- ⚙️ **Custom Configuration**:
+  - Load a custom `config.yaml` file using a command-line argument (`--config`).
+  - Set the server to listen on a custom port using `--port`.
+  - Set a custom response folder location for the mockserver `--responses-folder`
 
 ## Installation
 ### Prerequisites
 - Install [Rust](https://www.rust-lang.org/tools/install)
 
-### Clone and Build
+### Download and Run
+1. **Download the latest release** from the [Releases Page](https://github.com/sfeSantos/mockserver/releases).
+2. Extract the downloaded file.
+3. Run the server with:
 ```sh
-git clone https://github.com/your-repo/mockserver.git
-cd mockserver
-cargo build --release
+./mockserver --config config.yaml --port 8080 --responses-folder folder_location
 ```
+- Replace config.yaml with your configuration file.
+- Replace 8080 with the desired port.
 
 ## Configuration
 ```yaml
