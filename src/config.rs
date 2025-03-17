@@ -12,8 +12,8 @@ pub struct Endpoint {
 
 pub type Config = HashMap<String, Endpoint>;
 
-pub fn load_config() -> anyhow::Result<Config> {
-    let config_data = fs::read_to_string("config.yaml")?;
+pub fn load_config(config_file: &str) -> anyhow::Result<Config> {
+    let config_data = fs::read_to_string(config_file)?;
     let config: Config = serde_yaml::from_str(&config_data)?;
 
     Ok(config)
