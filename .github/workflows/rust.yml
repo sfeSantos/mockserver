@@ -11,12 +11,58 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - x86_64-apple-darwin
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install cross
+      run: cargo install cross --git https://github.com/cross-rs/cross
+
     - name: Build
-      run: cargo build --verbose
+      run: cross build --target ${{ matrix.target }} --verbose
+
+    - name: Package binary
+      run: |
+        mkdir -p dist
+        if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+          zip -j "dist/mockserver-${{ matrix.target }}.zip" "target/${{ matrix.target }}/release/mockserver.exe"
+        else
+          tar -czvf "dist/mockserver-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" mockserver
+        fi
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mockserver-${{ matrix.target }}
+        path: dist/*
+
     - name: Run tests
       run: cargo test --verbose
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+
+        with:
+          files: dist/*/*
+          tag_name: ${{ github.ref_name }}
+          body: "Release ${{ github.ref_name }} with cross-compiled binaries."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
