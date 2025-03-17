@@ -3,11 +3,10 @@ name: Rust
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  push:
     tags:
       - "v*"  # Runs when pushing a tag like v1.0.0
+  pull_request:
+    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always
