@@ -31,13 +31,13 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
         mkdir -p dist
-        cp target/release/myapp dist/
-        tar -czvf dist/myapp-${{ github.ref_name }}-linux.tar.gz -C dist myapp
+        cp target/release/mockserver dist/
+        tar -czvf dist/mockserver-${{ github.ref_name }}-linux.tar.gz -C dist mockserver
 
     - name: Publish to GitHub Releases
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/myapp-${{ github.ref_name }}-linux.tar.gz
+        files: dist/mockserver-${{ github.ref_name }}-linux.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
