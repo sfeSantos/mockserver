@@ -22,7 +22,7 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
     - **Basic Auth**: Validates username and password based on the configuration.
     - **Bearer Token**: Validates tokens and their claims, ensuring that the token matches expected values and claims (e.g., roles, permissions).
 - ⚙️ **Custom Configuration**:
-  - Load a custom `config.yaml` file using a command-line argument (`--config`).
+  - Load a custom `config.yaml` file using a command-line argument (`--file`).
   - Set the server to listen on a custom port using `--port`.
   - Set a custom response folder location for the mockserver `--responses-folder`
 
@@ -35,7 +35,7 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 2. Extract the downloaded file.
 3. Run the server with:
 ```sh
-./mockserver --config config.yaml --port 8080 --responses-folder folder_location
+./mockserver --file config.yaml --port 8080 --responses-folder folder_location
 ```
 - Replace config.yaml with your configuration file.
 - Replace 8080 with the desired port.
