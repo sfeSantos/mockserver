@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: cargo build --release --locked
+        run: cargo build --release
 
   publish:
     name: Publish for ${{ matrix.os }}
