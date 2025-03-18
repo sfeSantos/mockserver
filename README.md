@@ -28,18 +28,24 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 - 📝 Logging: Enables detailed request logging for easier debugging.
 
 ## Installation
-### Prerequisites
-- Install [Rust](https://www.rust-lang.org/tools/install)
+
 
 ### Download and Run
-1. **Download the latest release** from the [Releases Page](https://github.com/sfeSantos/mockserver/releases).
+1. **Download the latest release** for **Linux**, **Windows**, or **macOS** from the [Releases Page](https://github.com/sfeSantos/mockserver/releases).
 2. Extract the downloaded file.
 3. Run the server with:
-```sh
-./mockserver --file config.yaml --port 8080 --responses-folder folder_location
-```
-- Replace config.yaml with your configuration file.
-- Replace 8080 with the desired port.
+  - **Linux/macOS**:
+    ```sh
+    ./mockserver --file config.yaml --port 8080 --responses-folder folder_location
+    ```
+  - **Windows** (PowerShell) add the extension `.exe` and then run the following line:
+    ```sh
+    .\mockserver.exe --file config.yaml --port 8080 --responses-folder folder_location
+    ```
+4. Replace:
+  - `config.yaml` with your configuration file.
+  - `8080` with the desired port.
+  - `folder_location` with the directory for mock responses.
 
 ## Configuration
 ```yaml
