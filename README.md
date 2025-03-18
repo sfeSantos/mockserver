@@ -27,8 +27,8 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
   - Set a custom response folder location for the mockserver `--responses-folder`
 - 📝 Logging: Enables detailed request logging for easier debugging.
 - ⏳ **Configurable Delays**: Simulate slow or rate-limited APIs by defining a `delay` field in `config.yaml`.
-- Add an artificial delay (in milliseconds) before responding to requests.
-- Useful for testing timeout handling and performance in client applications.
+   - Add an artificial delay (in milliseconds) before responding to requests.
+   - Useful for testing timeout handling and performance in client applications.
 
 ## Installation
 
