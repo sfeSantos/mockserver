@@ -25,6 +25,7 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
   - Load a custom `config.yaml` file using a command-line argument (`--file`).
   - Set the server to listen on a custom port using `--port`.
   - Set a custom response folder location for the mockserver `--responses-folder`
+- 📝 Logging: Enables detailed request logging for easier debugging.
 
 ## Installation
 ### Prerequisites

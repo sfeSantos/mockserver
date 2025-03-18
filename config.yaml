@@ -2,10 +2,6 @@
   method:
    - GET
   file: user_response.json
-  authentication:
-    basic:
-      user: USER_NAME
-      password: PASSWORD
 
 /api/order:
   method:

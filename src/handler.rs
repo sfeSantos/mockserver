@@ -2,6 +2,7 @@ use crate::config::Endpoint;
 use std::collections::HashMap;
 use std::fs;
 use tokio::fs as async_fs;
+use tracing::info;
 use warp::Filter;
 use warp::http::header::AUTHORIZATION;
 use warp::http::Response;
@@ -42,9 +43,12 @@ pub async fn handle_request(
     endpoints: HashMap<String, Endpoint>,
     responses_folder: String,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    info!("Received request: {} {}", method, path.as_str());
+    
     if let Some(endpoint) = endpoints.get(path.as_str()) {
         if let Some(auth) = &endpoint.authentication {
             if !validate_auth(auth, auth_header) {
+                info!("❌ Unauthorized access attempt to {}", path.as_str());
                 return Err(custom(Unauthorized));
             }
         }
@@ -56,13 +60,15 @@ pub async fn handle_request(
             match method_str {
                 "GET" => {
                     let file_path = format!("{}/{}", responses_folder, endpoint.file);
-                    if let Ok(contents) = fs::read_to_string(file_path) {
+                    info!("📂 Fetching file from: {}", file_path);
+                    if let Ok(contents) = fs::read_to_string(&file_path) {
                         Ok(Response::builder()
                             .status(status_code)
                             .header("Content-Type", "application/json")
                             .body(contents)
                             .unwrap())
                     } else {
+                        info!("🚫 File not found: {}", file_path);
                         Ok(Response::builder()
                             .status(404)
                             .body("Not Found\n".into())
@@ -71,6 +77,7 @@ pub async fn handle_request(
                 }
                 "POST" | "PUT" => {
                     let file_path = format!("{}/{}", responses_folder, endpoint.file);
+                    info!("📂 Saving file to: {}", file_path);
                     if (async_fs::write(file_path, body).await).is_err() {
                         return Ok(Response::builder()
                             .status(500)
@@ -84,6 +91,7 @@ pub async fn handle_request(
                 }
                 "DELETE" => {
                     let file_path = format!("{}/{}", responses_folder, endpoint.file);
+                    info!("📂 Deleting file from: {}", file_path);
                     if (async_fs::remove_file(file_path).await).is_err() {
                         return Ok(Response::builder()
                             .status(404)
@@ -101,6 +109,7 @@ pub async fn handle_request(
                     .unwrap()),
             }
         } else {
+            info!("🚫 Method not allowed: {} {}", method, path.as_str());
             Ok(Response::builder()
                 .status(405)
                 .body("Method not allowed\n".into())
