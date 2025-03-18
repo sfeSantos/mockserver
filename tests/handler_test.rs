@@ -1,5 +1,9 @@
-use super::*;
+use std::collections::HashMap;
+use std::fs;
+use tokio::time::Instant;
 use warp::test::request;
+use mockserver::config::Endpoint;
+use mockserver::handler::routes;
 
 #[tokio::test]
 async fn test_get_existing_file() {
@@ -11,6 +15,7 @@ async fn test_get_existing_file() {
             file: "test_response.json".to_string(),
             status_code: None,
             authentication: None,
+            delay: None,
         },
     );
 
@@ -33,6 +38,7 @@ async fn test_get_non_existent_file() {
             file: "missing.json".to_string(),
             status_code: None,
             authentication: None,
+            delay: None,
         },
     );
 
@@ -52,6 +58,7 @@ async fn test_post_create_file() {
             file: "create.json".to_string(),
             status_code: Some(201),
             authentication: None,
+            delay: None,
         },
     );
 
@@ -78,6 +85,7 @@ async fn test_delete_existing_file() {
             file: "delete.json".to_string(),
             status_code: Some(205),
             authentication: None,
+            delay: None,
         },
     );
 
@@ -100,6 +108,7 @@ async fn test_method_not_allowed() {
             file: "forbidden.json".to_string(),
             status_code: None,
             authentication: None,
+            delay: None,
         },
     );
 
@@ -123,6 +132,7 @@ async fn test_get_existing_file_with_custom_status() {
             file: "test_response.json".to_string(),
             status_code: Some(201),
             authentication: None,
+            delay: None,
         },
     );
 
@@ -144,7 +154,10 @@ async fn test_unauthorized_access_basic() {
             method: vec!["GET".to_string()],
             file: "protected.json".to_string(),
             status_code: Some(200),
-            authentication: Some(serde_yaml::from_str("basic: { user: 'admin', password: 'secret' }").unwrap()),
+            authentication: Some(
+                serde_yaml::from_str("basic: { user: 'admin', password: 'secret' }").unwrap(),
+            ),
+            delay: None,
         },
     );
 
@@ -162,11 +175,17 @@ async fn test_valid_basic_auth() {
             method: vec!["GET".to_string()],
             file: "protected.json".to_string(),
             status_code: Some(200),
-            authentication: Some(serde_yaml::from_str("
+            authentication: Some(
+                serde_yaml::from_str(
+                    "
             basic:
                 user: 'admin'
                 password: 'secret'
-        ").unwrap()),
+        ",
+                )
+                .unwrap(),
+            ),
+            delay: None,
         },
     );
 
@@ -193,10 +212,16 @@ async fn test_valid_bearer_token() {
             method: vec!["GET".to_string()],
             file: "protected.json".to_string(),
             status_code: Some(200),
-            authentication: Some(serde_yaml::from_str(r#"
+            authentication: Some(
+                serde_yaml::from_str(
+                    r#"
             bearer:
                 token: 'valid_token'
-        "#).unwrap()),
+        "#,
+                )
+                .unwrap(),
+            ),
+            delay: None,
         },
     );
 
@@ -222,10 +247,16 @@ async fn test_invalid_bearer_token() {
             method: vec!["GET".to_string()],
             file: "protected.json".to_string(),
             status_code: Some(200),
-            authentication: Some(serde_yaml::from_str(r#"
+            authentication: Some(
+                serde_yaml::from_str(
+                    r#"
             bearer:
                 token: 'valid_token'
-        "#).unwrap()),
+        "#,
+                )
+                .unwrap(),
+            ),
+            delay: None,
         },
     );
 
@@ -251,12 +282,18 @@ async fn test_edge_case_missing_claims_in_bearer_token() {
             method: vec!["GET".to_string()],
             file: "protected.json".to_string(),
             status_code: Some(200),
-            authentication: Some(serde_yaml::from_str(r#"
+            authentication: Some(
+                serde_yaml::from_str(
+                    r#"
             bearer:
                 token: 'valid_token'
                 claims:
                     role: 'admin'
-        "#).unwrap()),
+        "#,
+                )
+                .unwrap(),
+            ),
+            delay: None,
         },
     );
 
@@ -282,12 +319,18 @@ async fn test_edge_case_invalid_claims_in_bearer_token() {
             method: vec!["GET".to_string()],
             file: "protected.json".to_string(),
             status_code: Some(200),
-            authentication: Some(serde_yaml::from_str(r#"
+            authentication: Some(
+                serde_yaml::from_str(
+                    r#"
             bearer:
                 token: 'valid_token'
                 claims:
                     role: 'admin'
-        "#).unwrap()),
+        "#,
+                )
+                .unwrap(),
+            ),
+            delay: None,
         },
     );
 
@@ -302,4 +345,60 @@ async fn test_edge_case_invalid_claims_in_bearer_token() {
         .reply(&api)
         .await;
     assert_eq!(res.status(), 401);
+}
+
+#[tokio::test]
+async fn test_response_with_delay() {
+    let mut endpoints = HashMap::new();
+    endpoints.insert(
+        "/test".to_string(),
+        Endpoint {
+            method: vec!["GET".to_string()],
+            file: "protected.json".to_string(),
+            status_code: Some(200),
+            authentication: None,
+            delay: Some(500), // 500ms delay
+        },
+    );
+
+    let start_time = Instant::now();
+    let api = routes(endpoints, String::from("responses"));
+
+    let res = request()
+        .method("GET")
+        .path("/test")
+        .reply(&api).await;
+
+    let elapsed = start_time.elapsed();
+
+    assert!(elapsed.as_millis() >= 500, "Expected at least 500ms delay");
+    assert_eq!(res.status(), 200);
+}
+
+#[tokio::test]
+async fn test_response_with_zero_delay() {
+    let mut endpoints = HashMap::new();
+    endpoints.insert(
+        "/test".to_string(),
+        Endpoint {
+            method: vec!["GET".to_string()],
+            file: "protected.json".to_string(),
+            status_code: Some(200),
+            authentication: None,
+            delay: Some(0), // Edge case: 0 delay
+        },
+    );
+
+    let start_time = Instant::now();
+
+    let api = routes(endpoints, String::from("responses"));
+
+    let res = request()
+        .method("GET")
+        .path("/test")
+        .reply(&api).await;
+
+    let elapsed = start_time.elapsed();
+    assert!(elapsed.as_millis() < 50, "Expected minimal delay for 0ms setting");
+    assert_eq!(res.status(), 200);
 }

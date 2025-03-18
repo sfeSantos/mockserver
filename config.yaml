@@ -2,6 +2,12 @@
   method:
    - GET
   file: user_response.json
+  delay: 3000 # in ms
+
+/api/user/1:
+  method:
+    - GET
+  file: user_response.json
 
 /api/order:
   method:

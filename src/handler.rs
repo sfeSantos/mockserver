@@ -1,7 +1,9 @@
 use crate::config::Endpoint;
 use std::collections::HashMap;
 use std::fs;
+use std::time::Duration;
 use tokio::fs as async_fs;
+use tokio::time::sleep;
 use tracing::info;
 use warp::Filter;
 use warp::http::header::AUTHORIZATION;
@@ -44,7 +46,7 @@ pub async fn handle_request(
     responses_folder: String,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     info!("Received request: {} {}", method, path.as_str());
-    
+
     if let Some(endpoint) = endpoints.get(path.as_str()) {
         if let Some(auth) = &endpoint.authentication {
             if !validate_auth(auth, auth_header) {
@@ -52,6 +54,8 @@ pub async fn handle_request(
                 return Err(custom(Unauthorized));
             }
         }
+
+        add_possible_delay(endpoint).await;
         
         let method_str = method.as_str();
         let status_code = default_status_code(endpoint, method_str);
@@ -121,6 +125,13 @@ pub async fn handle_request(
         .status(404)
         .body("Not Found\n".into())
         .unwrap())
+}
+
+async fn add_possible_delay(endpoint: &Endpoint) {
+    if let Some(delay) = endpoint.delay {
+        info!("⏳ Applying delay of {} ms", delay);
+        sleep(Duration::from_millis(delay)).await;
+    }
 }
 
 fn default_status_code(endpoint: &Endpoint, method_str: &str) -> u16 {

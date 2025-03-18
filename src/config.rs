@@ -8,6 +8,7 @@ pub struct Endpoint {
     pub file: String,
     pub status_code: Option<u16>,
     pub authentication: Option<Value>,
+    pub delay: Option<u64>,
 }
 
 pub type Config = HashMap<String, Endpoint>;
