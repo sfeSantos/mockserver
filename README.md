@@ -29,6 +29,11 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 - - ⏳ **Configurable Delays**: Simulate slow or rate-limited APIs by defining a `delay` field in `config.yaml`.
 - Add an artificial delay (in milliseconds) before responding to requests.
 - Useful for testing timeout handling and performance in client applications.
+- 🚧 **Rate Limiting**: Control the number of requests allowed per endpoint within a specified time window:
+    - **Requests per window**: Define the maximum number of requests allowed in a given time window (in milliseconds).
+    - **Separate counters per method**: Rate limits are tracked separately for different HTTP methods (e.g., `GET`, `POST`).
+    - **429 Too Many Requests**: Returns a `429` status code when the rate limit is exceeded.
+
 
 ## Installation
 
