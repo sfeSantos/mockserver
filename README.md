@@ -29,16 +29,12 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
 - ⏳ **Configurable Delays**: Simulate slow or rate-limited APIs by defining a `delay` field in `config.yaml`.
     - Add an artificial delay (in milliseconds) before responding to requests.
     - Useful for testing timeout handling and performance in client applications.
-- ⏳ **Configurable Delays**: Simulate slow or rate-limited APIs by defining a `delay` field in `config.yaml`.
-   - Add an artificial delay (in milliseconds) before responding to requests.
-   - Useful for testing timeout handling and performance in client applications.
 - 🚧 **Rate Limiting**: Control the number of requests allowed per endpoint within a specified time window:
     - **Requests per window**: Define the maximum number of requests allowed in a given time window (in milliseconds).
     - **Separate counters per method**: Rate limits are tracked separately for different HTTP methods (e.g., `GET`, `POST`).
     - **429 Too Many Requests**: Returns a `429` status code when the rate limit is exceeded.
 
 ## Installation
-
 
 ### Download and Run
 1. **Download the latest release** for **Linux**, **Windows**, or **macOS** from the [Releases Page](https://github.com/sfeSantos/mockserver/releases).
@@ -67,15 +63,27 @@ Many developers need quick and flexible mock servers to simulate backend APIs du
       user: 'admin'
       password: 'secret'
 
+/api/user/1:
+  method:
+    - GET
+  file: user_response.json
+  rate_limit:
+    requests: 5
+    window_ms: 10000
+
 /api/order:
-  method: POST
+  method:
+   - POST
+   - DELETE
   file: order_data.json
-  status_code: 202 #custom Http status code
+  status_code: 202 #custom Http Status code
   authentication:
     bearer:
-      token: 'valid_token'
+      token: TOKEN_STR
       claims:
-        role: 'admin'
+        sub: SUB
+        name: NAME
+        iat: 1516238972
 ```
 This means:
 - `GET /api/user` &rarr; Returns `response/user_reponse.json`
