@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::{collections::HashMap, fs};
 use serde_yaml::Value;
+use crate::rate_limit::RateLimit;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Endpoint {
@@ -9,6 +10,7 @@ pub struct Endpoint {
     pub status_code: Option<u16>,
     pub authentication: Option<Value>,
     pub delay: Option<u64>,
+    pub rate_limit: Option<RateLimit>,
 }
 
 pub type Config = HashMap<String, Endpoint>;

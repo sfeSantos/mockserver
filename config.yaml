@@ -8,6 +8,9 @@
   method:
     - GET
   file: user_response.json
+  rate_limit:
+    requests: 5
+    window_ms: 10000
 
 /api/order:
   method:

@@ -3,6 +3,7 @@ extern crate core;
 use clap::Parser;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
+use mockserver::rate_limit::new_rate_limit;
 use mockserver::server;
 
 #[derive(Parser, Debug)]
@@ -22,11 +23,12 @@ async fn main() {
     let responses_folder = args.responses_folder;
     let config_file = args.file;
     let port= args.port;
-
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)
         .finish();
+    let rate_limiter = new_rate_limit();
+    
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set subscriber");
 
-    server::start_server(responses_folder, config_file.as_str(), port).await;
+    server::start_server(responses_folder, config_file.as_str(), port, rate_limiter).await;
 }
