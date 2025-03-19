@@ -11,13 +11,13 @@ use warp::http::Response;
 use warp::hyper::Body;
 use warp::reject::custom;
 use crate::authentication::{validate_auth, Unauthorized};
-use crate::rate_limit::{check_rate_limit, RateLimitTracker};
+use crate::rate_limit::{check_rate_limit, RateLimitTracker, RateLimited};
 
 pub fn routes(
     endpoints: HashMap<String, Endpoint>,
     responses_folder: String,
     rate_limiter: RateLimitTracker,
-) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let endpoints = warp::any().map(move || endpoints.clone());
     let responses_folder = warp::any().map(move || responses_folder.clone());
     let rate_limiter = warp::any().map(move || rate_limiter.clone());
@@ -54,7 +54,7 @@ async fn process_request(
     let path_str = path.as_str().to_string();
 
     if let Some(endpoint) = endpoints.get(&path_str) {
-        check_rate_limit(path_str.clone(), endpoint.rate_limit.as_ref(), rate_limiter.clone()).await?;
+        check_rate_limit(path_str.clone(), method.as_str(), endpoint.rate_limit.as_ref(), rate_limiter.clone()).await?;
     }
 
     handle_request(path, method, auth_header, body, endpoints, responses_folder).await
@@ -67,7 +67,7 @@ pub async fn handle_request(
     body: bytes::Bytes,
     endpoints: HashMap<String, Endpoint>,
     responses_folder: String,
-) -> Result<impl warp::Reply, warp::Rejection> {
+) -> Result<impl Reply, Rejection> {
     info!("Received request: {} {}", method, path.as_str());
 
     if let Some(endpoint) = endpoints.get(path.as_str()) {
@@ -167,13 +167,20 @@ fn default_status_code(endpoint: &Endpoint, method_str: &str) -> u16 {
 }
 
 /// Custom rejection handler for returning proper error responses
-async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
+async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if err.find::<Unauthorized>().is_some() {
         let response: Response<Body> = Response::builder()
             .status(401)
             .body(Body::from("Unauthorized\n"))
             .unwrap();
         return Ok(response);
+    } else if err.find::<RateLimited>().is_some() {
+        let response: Response<Body> = Response::builder()
+            .status(429)
+            .body(Body::from("Rate limit exceeded\n"))
+            .unwrap();
+        return Ok(response);
     }
+    
     Err(err)
 }

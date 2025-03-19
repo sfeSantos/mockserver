@@ -4,7 +4,7 @@ use tokio::time::Instant;
 use warp::test::request;
 use mockserver::config::Endpoint;
 use mockserver::handler::routes;
-use mockserver::rate_limit::{new_rate_limit, RateLimitTracker};
+use mockserver::rate_limit::{new_rate_limit};
 
 #[tokio::test]
 async fn test_get_existing_file() {
