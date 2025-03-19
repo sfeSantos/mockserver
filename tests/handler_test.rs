@@ -4,6 +4,7 @@ use tokio::time::Instant;
 use warp::test::request;
 use mockserver::config::Endpoint;
 use mockserver::handler::routes;
+use mockserver::rate_limit::{new_rate_limit, RateLimitTracker};
 
 #[tokio::test]
 async fn test_get_existing_file() {
@@ -16,12 +17,13 @@ async fn test_get_existing_file() {
             status_code: None,
             authentication: None,
             delay: None,
+            rate_limit: None,
         },
     );
 
     fs::write("responses/test_response.json", "{\"message\": \"ok\"}").unwrap();
 
-    let api = routes(endpoints, String::from("responses"));
+    let api = routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request().method("GET").path("/test").reply(&api).await;
 
     assert_eq!(res.status(), 200);
@@ -39,10 +41,11 @@ async fn test_get_non_existent_file() {
             status_code: None,
             authentication: None,
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request().method("GET").path("/missing").reply(&api).await;
 
     assert_eq!(res.status(), 404);
@@ -59,10 +62,11 @@ async fn test_post_create_file() {
             status_code: Some(201),
             authentication: None,
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request()
         .method("POST")
         .path("/create")
@@ -86,12 +90,13 @@ async fn test_delete_existing_file() {
             status_code: Some(205),
             authentication: None,
             delay: None,
+            rate_limit: None,
         },
     );
 
     fs::write("responses/delete.json", "to be deleted").unwrap();
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request().method("DELETE").path("/delete").reply(&api).await;
 
     assert_eq!(res.status(), 205);
@@ -109,10 +114,11 @@ async fn test_method_not_allowed() {
             status_code: None,
             authentication: None,
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request()
         .method("POST")
         .path("/forbidden")
@@ -133,12 +139,13 @@ async fn test_get_existing_file_with_custom_status() {
             status_code: Some(201),
             authentication: None,
             delay: None,
+            rate_limit: None,
         },
     );
 
     fs::write("responses/test_response.json", "{\"message\": \"ok\"}").unwrap();
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request().method("GET").path("/test").reply(&api).await;
 
     assert_eq!(res.status(), 201);
@@ -158,10 +165,11 @@ async fn test_unauthorized_access_basic() {
                 serde_yaml::from_str("basic: { user: 'admin', password: 'secret' }").unwrap(),
             ),
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
     let res = request().method("GET").path("/protected").reply(&api).await;
     assert_eq!(res.status(), 401);
 }
@@ -186,12 +194,13 @@ async fn test_valid_basic_auth() {
                 .unwrap(),
             ),
             delay: None,
+            rate_limit: None,
         },
     );
 
     fs::write("responses/protected.json", "{\"message\": \"ok\"}").unwrap();
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     let auth_header = "Basic YWRtaW46c2VjcmV0"; // base64 of "admin:secret"
     let res = request()
@@ -222,10 +231,11 @@ async fn test_valid_bearer_token() {
                 .unwrap(),
             ),
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     // Valid Bearer Token (should return status 200)
     let auth_header = "Bearer valid_token";
@@ -257,10 +267,11 @@ async fn test_invalid_bearer_token() {
                 .unwrap(),
             ),
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     // Invalid Bearer Token (should return status 401)
     let auth_header = "Bearer invalid_token";
@@ -294,10 +305,11 @@ async fn test_edge_case_missing_claims_in_bearer_token() {
                 .unwrap(),
             ),
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     // Missing claim in the bearer token (should return 401)
     let auth_header = "Bearer valid_token"; // token without role claim
@@ -331,10 +343,11 @@ async fn test_edge_case_invalid_claims_in_bearer_token() {
                 .unwrap(),
             ),
             delay: None,
+            rate_limit: None,
         },
     );
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     // Invalid claim in the bearer token (should return 401)
     let auth_header = "Bearer invalid_token_with_claim"; // token with incorrect claim
@@ -358,11 +371,12 @@ async fn test_response_with_delay() {
             status_code: Some(200),
             authentication: None,
             delay: Some(500), // 500ms delay
+            rate_limit: None,
         },
     );
 
     let start_time = Instant::now();
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     let res = request()
         .method("GET")
@@ -386,12 +400,13 @@ async fn test_response_with_zero_delay() {
             status_code: Some(200),
             authentication: None,
             delay: Some(0), // Edge case: 0 delay
+            rate_limit: None,
         },
     );
 
     let start_time = Instant::now();
 
-    let api = routes(endpoints, String::from("responses"));
+    let api =routes(endpoints, String::from("responses"), new_rate_limit());
 
     let res = request()
         .method("GET")

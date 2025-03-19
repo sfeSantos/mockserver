@@ -5,19 +5,22 @@ use std::time::Duration;
 use tokio::fs as async_fs;
 use tokio::time::sleep;
 use tracing::info;
-use warp::Filter;
+use warp::{Filter, Rejection, Reply};
 use warp::http::header::AUTHORIZATION;
 use warp::http::Response;
 use warp::hyper::Body;
 use warp::reject::custom;
 use crate::authentication::{validate_auth, Unauthorized};
+use crate::rate_limit::{check_rate_limit, RateLimitTracker};
 
 pub fn routes(
     endpoints: HashMap<String, Endpoint>,
-    responses_folder: String
+    responses_folder: String,
+    rate_limiter: RateLimitTracker,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let endpoints = warp::any().map(move || endpoints.clone());
     let responses_folder = warp::any().map(move || responses_folder.clone());
+    let rate_limiter = warp::any().map(move || rate_limiter.clone());
 
     //TODO allow cors be passed via configuration file
     let cors = warp::cors()
@@ -32,9 +35,29 @@ pub fn routes(
         .and(warp::body::bytes())
         .and(endpoints)
         .and(responses_folder)
-        .and_then(handle_request)
+        .and(rate_limiter)
+        .and_then(process_request)
         .recover(handle_rejection)
         .with(cors)
+}
+
+/// Handles the rate limit and processes the request
+async fn process_request(
+    path: warp::path::FullPath,
+    method: warp::http::Method,
+    auth_header: Option<String>,
+    body: bytes::Bytes,
+    endpoints: HashMap<String, Endpoint>,
+    responses_folder: String,
+    rate_limiter: RateLimitTracker,
+) -> Result<impl Reply, Rejection> {
+    let path_str = path.as_str().to_string();
+
+    if let Some(endpoint) = endpoints.get(&path_str) {
+        check_rate_limit(path_str.clone(), endpoint.rate_limit.as_ref(), rate_limiter.clone()).await?;
+    }
+
+    handle_request(path, method, auth_header, body, endpoints, responses_folder).await
 }
 
 pub async fn handle_request(
